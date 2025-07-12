@@ -7,6 +7,7 @@ import logging
 from typing import List
 from uuid import UUID, uuid4
 from datetime import datetime
+import json
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
@@ -24,31 +25,39 @@ router = APIRouter(prefix="/api/v1", tags=["chat"])
 async def create_session(session_data: SessionCreate) -> SessionResponse:
     """Create a new chat session."""
     try:
-        query = """
+        # Convert metadata to JSON string for storage
+        metadata_json = json.dumps(session_data.metadata)
+        
+        # First, insert the session
+        insert_query = """
             INSERT INTO sessions (user_id, metadata)
-            VALUES ($1, $2)
-            RETURNING id, user_id, status, created_at, metadata
+            VALUES ($1, $2::jsonb)
+            RETURNING id, user_id, status, created_at, metadata::text
         """
         result = await db_manager.execute_query(
-            query,
-            session_data.user_id,
-            session_data.metadata
+            insert_query, 
+            session_data.user_id, 
+            metadata_json
         )
         
         if not result:
             raise HTTPException(status_code=500, detail="Failed to create session")
+            
+        # Convert the metadata back to a dictionary
+        session_row = result[0]
+        metadata_dict = json.loads(session_row['metadata'])
         
-        session = result[0]
+        # Create the response
         return SessionResponse(
-            id=session["id"],
-            user_id=session["user_id"],
-            status=session["status"],
-            created_at=session["created_at"],
-            metadata=session["metadata"]
+            id=session_row['id'],
+            user_id=session_row['user_id'],
+            status=session_row['status'],
+            created_at=session_row['created_at'],
+            metadata=metadata_dict
         )
-    
+            
     except Exception as e:
-        logger.error(f"Failed to create session: {e}")
+        logger.error(f"Failed to create session: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

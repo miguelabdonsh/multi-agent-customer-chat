@@ -1,6 +1,6 @@
 /**
  * Chat hook for WebSocket connection and message management
- * Minimal implementation with reconnection and state management
+ * Simplified implementation without aggressive reconnection
  */
 
 'use client'
@@ -15,8 +15,6 @@ export function useChat(sessionId: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected')
   const wsRef = useRef<WebSocket | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const reconnectAttempts = useRef(0)
   
   // Create session via REST API
   const createSession = useCallback(async (userId: string): Promise<string> => {
@@ -43,17 +41,24 @@ export function useChat(sessionId: string | null) {
   
   // Connect to WebSocket
   const connectWebSocket = useCallback(() => {
-    if (!sessionId || connectionStatus === 'connecting') return
+    if (!sessionId) return
+    
+    // Close existing connection if any
+    if (wsRef.current) {
+      wsRef.current.close()
+    }
     
     setConnectionStatus('connecting')
     
-    const ws = new WebSocket(`${WS_BASE_URL}/ws/${sessionId}`)
+    const wsUrl = `${WS_BASE_URL}/ws/${sessionId}`
+    console.log('Connecting to WebSocket:', wsUrl)
+    
+    const ws = new WebSocket(wsUrl)
     wsRef.current = ws
     
     ws.onopen = () => {
       setConnectionStatus('connected')
-      reconnectAttempts.current = 0
-      console.log('WebSocket connected')
+      console.log('WebSocket connected successfully')
     }
     
     ws.onmessage = (event) => {
@@ -84,22 +89,13 @@ export function useChat(sessionId: string | null) {
     ws.onclose = () => {
       setConnectionStatus('disconnected')
       console.log('WebSocket disconnected')
-      
-      // Attempt reconnection
-      if (reconnectAttempts.current < 5) {
-        reconnectAttempts.current++
-        reconnectTimeoutRef.current = setTimeout(() => {
-          console.log(`Reconnecting... (attempt ${reconnectAttempts.current})`)
-          connectWebSocket()
-        }, 2000 * reconnectAttempts.current)
-      }
     }
     
     ws.onerror = (error) => {
       console.error('WebSocket error:', error)
       setConnectionStatus('error')
     }
-  }, [sessionId, connectionStatus])
+  }, [sessionId])
   
   // Send message via WebSocket
   const sendMessage = useCallback((content: string) => {
@@ -123,29 +119,16 @@ export function useChat(sessionId: string | null) {
     return () => {
       if (wsRef.current) {
         wsRef.current.close()
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
+        wsRef.current = null
       }
     }
-  }, [sessionId, connectWebSocket])
-  
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close()
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-      }
-    }
-  }, [])
+  }, [sessionId])
   
   return {
     messages,
     connectionStatus,
     sendMessage,
     createSession,
+    reconnect: connectWebSocket,
   }
 } 
