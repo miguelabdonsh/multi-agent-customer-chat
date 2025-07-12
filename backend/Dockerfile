@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install dependencies
-COPY ../pyproject.toml .
+COPY pyproject.toml .
 RUN pip install uv && uv sync
 
 # Copy application code
