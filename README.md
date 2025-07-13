@@ -33,6 +33,10 @@ This is not just another chatbot. It's a **production-ready, enterprise-grade pl
 
 ![Application Interface](app.png)
 
+## Architecture
+
+![System Architecture](architecture.png)
+
 ### Agent Orchestration
 - **LangGraph Workflow**: Central message router and workflow coordinator
 - **Router Agent**: Intent classification and message routing
