@@ -16,7 +16,7 @@
 
 *Deliver instant, intelligent, and safe customer support at scale with seamless escalation to human agents.*
 
-[Quick Start](#quick-start) • [Features](#features) • [Architecture](#architecture) • [API Reference](#api-reference) • [Configuration](#configuration) • [Troubleshooting](#troubleshooting) • [Contributing](#contributing)
+[Quick Start](#quick-start) • [Features](#features) • [Architecture](#architecture) • [API Reference](#api-reference) • [Configuration](#configuration) • [Troubleshooting](#troubleshooting)
 
 
 ## What Makes This Special?
