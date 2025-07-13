@@ -5,6 +5,7 @@ from .router import RouterAgent
 from .faq import FAQAgent
 from .support import SupportAgent
 from .escalation import EscalationAgent
+from .guardrails import GuardrailsAgent
 
 __all__ = [
     "BaseAgent",
@@ -12,5 +13,6 @@ __all__ = [
     "RouterAgent",
     "FAQAgent",
     "SupportAgent",
-    "EscalationAgent"
+    "EscalationAgent",
+    "GuardrailsAgent"
 ] 

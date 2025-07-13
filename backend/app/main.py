@@ -14,6 +14,7 @@ from uuid import UUID
 
 from app.config import settings
 from app.database import db_manager
+from app.cache import cache_manager
 from app.api import router as api_router
 from app.websocket import handle_websocket_connection
 
@@ -32,6 +33,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Multi-Agent Customer Chat application")
     try:
         await db_manager.connect()
+        await cache_manager.connect()
         logger.info("Application startup completed")
     except Exception as e:
         logger.error(f"Failed to start application: {e}")
@@ -42,6 +44,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down application")
     await db_manager.disconnect()
+    await cache_manager.disconnect()
     logger.info("Application shutdown completed")
 
 
@@ -90,14 +93,24 @@ async def health_check():
         # Check database connectivity
         db_healthy = await db_manager.health_check()
         
+        # Check Redis connectivity
+        redis_healthy = False
+        if cache_manager.redis_client:
+            try:
+                await cache_manager.redis_client.ping()
+                redis_healthy = True
+            except Exception:
+                pass
+        
         health_status = {
-            "status": "healthy" if db_healthy else "unhealthy",
+            "status": "healthy" if db_healthy and redis_healthy else "unhealthy",
             "database": "connected" if db_healthy else "disconnected",
+            "redis": "connected" if redis_healthy else "disconnected",
             "environment": settings.environment
         }
         
-        if not db_healthy:
-            raise HTTPException(status_code=503, detail="Database connectivity issue")
+        if not db_healthy or not redis_healthy:
+            raise HTTPException(status_code=503, detail="Service connectivity issue")
         
         return health_status
     
@@ -123,6 +136,24 @@ async def database_health() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
         raise HTTPException(status_code=503, detail=f"Database error: {str(e)}")
+
+
+@app.get("/health/redis")
+async def redis_health() -> Dict[str, Any]:
+    """Redis-specific health check."""
+    try:
+        # Test Redis with ping
+        if cache_manager.redis_client:
+            await cache_manager.redis_client.ping()
+            return {
+                "status": "healthy",
+                "redis": "connected"
+            }
+        else:
+            raise HTTPException(status_code=503, detail="Redis client not initialized")
+    except Exception as e:
+        logger.error(f"Redis health check failed: {e}")
+        raise HTTPException(status_code=503, detail=f"Redis error: {str(e)}")
 
 
 if __name__ == "__main__":

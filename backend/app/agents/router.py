@@ -10,6 +10,7 @@ from app.agents.base_agent import BaseAgent, AgentResponse
 from app.agents.faq import FAQAgent
 from app.agents.support import SupportAgent
 from app.agents.escalation import EscalationAgent
+from app.agents.guardrails import GuardrailsAgent
 
 
 class RoutingDecision(BaseModel):
@@ -29,6 +30,7 @@ class RouterAgent(BaseAgent):
         self.faq_agent = FAQAgent()
         self.support_agent = SupportAgent()
         self.escalation_agent = EscalationAgent()
+        self.guardrails_agent = GuardrailsAgent()
     
     def get_system_prompt(self) -> str:
         """Return router-specific system prompt."""
@@ -132,7 +134,21 @@ Provide only the JSON object, no markdown formatting."""
         
         # Route to appropriate agent if confidence is high
         if decision.confidence > 0.7:
-            return await self.route_to_agent(message, context, decision.next_agent)
+            agent_response = await self.route_to_agent(message, context, decision.next_agent)
+            
+            # Validate response through guardrails
+            guardrails_result = await self.guardrails_agent.process(agent_response.content, context)
+            
+            # If unsafe content detected, provide fallback response
+            if not guardrails_result.is_safe or guardrails_result.safety_score < 0.5:
+                return AgentResponse(
+                    content="I apologize, but I cannot provide that information. Please contact our support team for assistance.",
+                    confidence=0.5,
+                    agent_type="router",
+                    reasoning=f"Content flagged by guardrails. Safety score: {guardrails_result.safety_score:.2f}"
+                )
+            
+            return agent_response
         
         # Fallback to router response
         prompt = f"""You are a customer service router. Provide a helpful response.

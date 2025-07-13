@@ -55,32 +55,32 @@ export default function ChatPage() {
       case 'connected':
         return {
           color: 'bg-green-500',
-          text: 'Conectado',
+          text: 'Connected',
           icon: <Wifi className="w-4 h-4" />
         }
       case 'connecting':
         return {
           color: 'bg-yellow-500',
-          text: 'Conectando...',
+          text: 'Connecting...',
           icon: <Wifi className="w-4 h-4 animate-pulse" />
         }
       case 'disconnected':
         return {
           color: 'bg-red-500',
-          text: 'Desconectado',
+          text: 'Disconnected',
           icon: <WifiOff className="w-4 h-4" />
         }
       default:
         return {
           color: 'bg-gray-500',
-          text: 'Estado desconocido',
+          text: 'Unknown status',
           icon: <WifiOff className="w-4 h-4" />
         }
     }
   }
 
   const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString('es-ES', { 
+    return new Date(timestamp).toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit' 
     })
@@ -103,11 +103,11 @@ export default function ChatPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold">
-                  Asistente Virtual
+                  Virtual Assistant
                 </h1>
                 <p className="text-blue-100 text-sm flex items-center gap-2">
                   <Sparkles className="w-4 h-4" />
-                  Soporte inteligente 24/7
+                  24/7 intelligent support
                 </p>
               </div>
             </div>
@@ -120,7 +120,7 @@ export default function ChatPage() {
                   <span className="text-sm font-medium">{statusConfig.text}</span>
                 </div>
                 <div className="text-xs text-blue-100 mt-1">
-                  {messageCount} mensajes
+                  {messageCount} messages
                 </div>
               </div>
               
@@ -129,7 +129,7 @@ export default function ChatPage() {
                   onClick={handleReconnect}
                   className="px-4 py-2 bg-white/20 text-white rounded-xl hover:bg-white/30 transition-all duration-200 backdrop-blur-sm border border-white/30"
                 >
-                  Reconectar
+                  Reconnect
                 </button>
               )}
             </div>
@@ -143,13 +143,13 @@ export default function ChatPage() {
               <div className="p-8 bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-200 shadow-lg">
                 <MessageCircle className="w-16 h-16 text-blue-500 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                  ¡Bienvenido al chat!
+                  Welcome to chat!
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Inicia una conversación con nuestro asistente virtual
+                  Start a conversation with our virtual assistant
                 </p>
                 <div className="text-sm text-gray-500">
-                  Escribe tu mensaje abajo para comenzar
+                  Type your message below to begin
                 </div>
               </div>
             </div>
@@ -213,7 +213,7 @@ export default function ChatPage() {
                       <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
                       <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                       <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      <span className="text-sm text-gray-500 ml-2">Escribiendo...</span>
+                      <span className="text-sm text-gray-500 ml-2">Typing...</span>
                     </div>
                   </div>
                 </div>
@@ -230,7 +230,7 @@ export default function ChatPage() {
             <MessageCircle className="w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Escribe tu mensaje aquí..."
+              placeholder="Type your message here..."
               className="flex-1 bg-transparent text-gray-700 placeholder-gray-500 focus:outline-none"
               disabled={connectionStatus !== 'connected'}
               onKeyPress={(e) => {
@@ -260,7 +260,7 @@ export default function ChatPage() {
           </div>
           
           <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
-            <span>Presiona Enter para enviar</span>
+            <span>Press Enter to send</span>
             <span>Powered by AI Assistant</span>
           </div>
         </div>

@@ -1,6 +1,6 @@
 """
 WebSocket handler for real-time chat communication.
-Simplified implementation without Redis complexity.
+Uses complete LangGraph workflow for agent orchestration.
 """
 
 import json
@@ -13,7 +13,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from app.database import db_manager
 from app.models import ChatMessage, WebSocketMessage
-from app.agents.router import RouterAgent
+from app.workflow import chat_workflow
 
 logger = logging.getLogger(__name__)
 
@@ -58,12 +58,9 @@ async def get_message_history(session_id: UUID, limit: int = 50) -> list:
 
 
 async def handle_websocket_connection(websocket: WebSocket, session_id: UUID):
-    """Handle WebSocket connection lifecycle with agent integration."""
+    """Handle WebSocket connection lifecycle with complete workflow."""
     await websocket.accept()
     logger.info(f"WebSocket connected for session {session_id}")
-    
-    # Initialize router agent for this connection
-    router_agent = RouterAgent()
     
     try:
         # Send connection confirmation
@@ -96,6 +93,7 @@ async def handle_websocket_connection(websocket: WebSocket, session_id: UUID):
                     metadata=ws_message.data.get("metadata", {})
                 )
                 await save_message(user_message)
+                
                 # Send user message back to client
                 logger.info("About to send user message back to client")
                 await websocket.send_text(json.dumps({
@@ -110,37 +108,48 @@ async def handle_websocket_connection(websocket: WebSocket, session_id: UUID):
                     }
                 }))
                 logger.info("User message sent to client")
-                # Process with router agent
+                
+                # Process with complete workflow
                 try:
-                    context = {"session_id": str(session_id)}
-                    agent_response = await router_agent.process(user_content, context)
+                    user_id = f"user-{session_id}"  # Generate user_id from session_id
+                    workflow_result = await chat_workflow.process_message(
+                        user_content, session_id, user_id
+                    )
+                    
                     # Save agent response
                     agent_message = ChatMessage(
                         session_id=session_id,
-                        sender="router",
-                        content=agent_response.content,
-                        metadata={"confidence": agent_response.confidence, "reasoning": agent_response.reasoning}
+                        sender="assistant",
+                        content=workflow_result["content"],
+                        metadata={
+                            "agent": workflow_result["agent"],
+                            "reasoning": workflow_result["reasoning"],
+                            "workflow_processed": True
+                        }
                     )
                     await save_message(agent_message)
-                    logger.info("About to send agent response to client")
-                    # Send agent response to client
+                    
+                    logger.info("About to send workflow response to client")
+                    # Send workflow response to client
                     await websocket.send_text(json.dumps({
                         "type": "message",
                         "data": {
                             "session_id": str(session_id),
                             "sender": "assistant",
-                            "content": agent_response.content,
+                            "content": workflow_result["content"],
                             "message_type": "text",
                             "created_at": datetime.now().isoformat(),
                             "metadata": {
-                                "agent": agent_response.agent_type,
-                                "confidence": agent_response.confidence
+                                "agent": workflow_result["agent"],
+                                "reasoning": workflow_result["reasoning"],
+                                "workflow_processed": True
                             }
                         }
                     }))
-                    logger.info("Agent response sent to client")
-                except Exception as agent_error:
-                    logger.error(f"Agent processing error: {agent_error}")
+                    logger.info("Workflow response sent to client")
+                    
+                except Exception as workflow_error:
+                    logger.error(f"Workflow processing error: {workflow_error}")
                     try:
                         logger.info("About to send fallback response to client")
                         await websocket.send_text(json.dumps({

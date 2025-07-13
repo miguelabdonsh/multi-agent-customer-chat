@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     # Database configuration
     database_url: Optional[str] = None
     
+    # Redis configuration
+    redis_url: Optional[str] = None
+    
     # AI configuration
     google_api_key: Optional[str] = None
     
@@ -42,6 +45,10 @@ class Settings(BaseSettings):
             postgres_password = os.getenv("POSTGRES_PASSWORD")
             postgres_db = os.getenv("POSTGRES_DB")
             self.database_url = f"postgresql://{postgres_user}:{postgres_password}@localhost:5432/{postgres_db}"
+        
+        # Set Redis URL from environment variables if not provided
+        if not self.redis_url:
+            self.redis_url = os.getenv("REDIS_URL")
         
         # Set other environment variables if not provided
         if not self.google_api_key:
