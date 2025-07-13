@@ -1,6 +1,6 @@
 /**
  * Chat hook for WebSocket connection and message management
- * Simplified implementation without aggressive reconnection
+ * Compatible with your backend API structure
  */
 
 'use client'
@@ -62,17 +62,21 @@ export function useChat(sessionId: string | null) {
     }
     
     ws.onmessage = (event) => {
+      console.log('WebSocket raw event:', event.data)
       try {
         const message: WebSocketMessage = JSON.parse(event.data)
-        
+        console.log('WebSocket parsed message:', message)
         switch (message.type) {
-          case 'chat':
-            const chatMessage: ChatMessage = message.data as ChatMessage
-            setMessages(prev => [...prev, chatMessage])
+          case 'message':
+            // El mensaje real está en message.data, no en message.data.message
+            const chatMessage: ChatMessage = message.data as ChatMessage;
+            console.log('Parsed chatMessage:', chatMessage)
+            if (chatMessage) {
+              setMessages(prev => [...prev, chatMessage])
+            }
             break
-          case 'history':
-            const historyMessages: ChatMessage[] = message.data.messages || []
-            setMessages(historyMessages)
+          case 'status':
+            console.log('Status message:', message.data)
             break
           case 'system':
             console.log('System message:', message.data)
@@ -80,9 +84,11 @@ export function useChat(sessionId: string | null) {
           case 'error':
             console.error('WebSocket error:', message.data)
             break
+          default:
+            console.log('Unhandled message type:', message.type, message.data)
         }
       } catch (error) {
-        console.error('Failed to parse WebSocket message:', error)
+        console.error('Failed to parse WebSocket message:', error, event.data)
       }
     }
     
@@ -103,7 +109,10 @@ export function useChat(sessionId: string | null) {
     
     const message: WebSocketMessage = {
       type: 'chat',
-      data: { content, metadata: {} },
+      data: { 
+        content,
+        metadata: {}
+      },
       session_id: sessionId || undefined,
     }
     
@@ -122,7 +131,7 @@ export function useChat(sessionId: string | null) {
         wsRef.current = null
       }
     }
-  }, [sessionId])
+  }, [sessionId, connectWebSocket])
   
   return {
     messages,
@@ -131,4 +140,4 @@ export function useChat(sessionId: string | null) {
     createSession,
     reconnect: connectWebSocket,
   }
-} 
+}

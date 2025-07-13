@@ -83,11 +83,11 @@ async def handle_websocket_connection(websocket: WebSocket, session_id: UUID):
         # Message handling loop
         while True:
             data = await websocket.receive_text()
+            logger.info(f"WebSocket raw data received: {data}")
             ws_message = WebSocketMessage.parse_raw(data)
             
             if ws_message.type == "chat":
                 user_content = ws_message.data.get("content", "")
-                
                 # Save user message
                 user_message = ChatMessage(
                     session_id=session_id,
@@ -96,12 +96,24 @@ async def handle_websocket_connection(websocket: WebSocket, session_id: UUID):
                     metadata=ws_message.data.get("metadata", {})
                 )
                 await save_message(user_message)
-                
+                # Send user message back to client
+                logger.info("About to send user message back to client")
+                await websocket.send_text(json.dumps({
+                    "type": "message",
+                    "data": {
+                        "session_id": str(session_id),
+                        "sender": "user",
+                        "content": user_content,
+                        "message_type": "text",
+                        "created_at": datetime.now().isoformat(),
+                        "metadata": user_message.metadata
+                    }
+                }))
+                logger.info("User message sent to client")
                 # Process with router agent
                 try:
                     context = {"session_id": str(session_id)}
                     agent_response = await router_agent.process(user_content, context)
-                    
                     # Save agent response
                     agent_message = ChatMessage(
                         session_id=session_id,
@@ -110,10 +122,10 @@ async def handle_websocket_connection(websocket: WebSocket, session_id: UUID):
                         metadata={"confidence": agent_response.confidence, "reasoning": agent_response.reasoning}
                     )
                     await save_message(agent_message)
-                    
+                    logger.info("About to send agent response to client")
                     # Send agent response to client
                     await websocket.send_text(json.dumps({
-                        "type": "chat",
+                        "type": "message",
                         "data": {
                             "session_id": str(session_id),
                             "sender": "assistant",
@@ -126,21 +138,25 @@ async def handle_websocket_connection(websocket: WebSocket, session_id: UUID):
                             }
                         }
                     }))
-                    
+                    logger.info("Agent response sent to client")
                 except Exception as agent_error:
                     logger.error(f"Agent processing error: {agent_error}")
-                    # Send fallback response
-                    await websocket.send_text(json.dumps({
-                        "type": "chat",
-                        "data": {
-                            "session_id": str(session_id),
-                            "sender": "assistant",
-                            "content": "I apologize, but I'm having trouble processing your request right now. Please try again.",
-                            "message_type": "text",
-                            "created_at": datetime.now().isoformat(),
-                            "metadata": {"agent": "fallback"}
-                        }
-                    }))
+                    try:
+                        logger.info("About to send fallback response to client")
+                        await websocket.send_text(json.dumps({
+                            "type": "message",
+                            "data": {
+                                "session_id": str(session_id),
+                                "sender": "assistant",
+                                "content": "I apologize, but I'm having trouble processing your request right now. Please try again.",
+                                "message_type": "text",
+                                "created_at": datetime.now().isoformat(),
+                                "metadata": {"agent": "fallback"}
+                            }
+                        }))
+                        logger.info("Fallback response sent to client")
+                    except Exception as fallback_error:
+                        logger.error(f"Error sending fallback response: {fallback_error}")
                 
             elif ws_message.type == "heartbeat":
                 # Respond to heartbeat
